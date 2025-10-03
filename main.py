@@ -6,6 +6,9 @@ def browse():                                                   # Function to re
     user_fp.delete(0, tk.END)
     user_fp.insert(0, filepath)
     
+def open_file():
+    print("Not yet implemented")
+
 def set_brightness():
     print("Not yet implemented, the slider value is: " + str(brightness_scale.get()))
 
@@ -26,15 +29,18 @@ file_label.grid(row=0, column=0, sticky="e")
 user_fp = tk.Entry(window, width=30)                            # text entry box to let the user enter a file path
 user_fp.grid(row=0, column=1)
 
-browse_button = tk.Button(window,width=5,text="Browse", command=browse)
+browse_button = tk.Button(window,width=7,text="Browse", command=browse)
 browse_button.grid(row=0,column=2, padx=5)
+
+open_button = tk.Button(window,width=5,text="open", command=open_file)
+open_button.grid(row=0,column=3, padx=5)
 
 
 ## Metadata
-meta_frame = tk.Frame(window, pady=30, padx=10)
-meta_frame.grid(row=1,column=0,sticky="s",columnspan=3)
+meta_frame = tk.Frame(window, pady=30, padx=10)                 # Frame that holds all the labels for the metadata
+meta_frame.grid(row=1,column=0,sticky="s",columnspan=4)
 
-fsize = "dummy"
+fsize = "dummy"                                                 # These 4 variables hold the parsed metadata
 img_w = "dummy"
 img_h = "dummy"
 img_bpp = "dummy"
@@ -48,7 +54,7 @@ meta_bpp = tk.Label(meta_frame, text=("Bits per Pixel: " + img_bpp)).pack(side="
 
 ## Image Scale
 size_frame = tk.Frame(window)
-size_frame.grid(row=2, column=0,sticky="s",columnspan=3)
+size_frame.grid(row=2, column=0,sticky="s",columnspan=4)
 
 size_label = tk.Label(size_frame, text="Image Scale:")
 size_label.pack(side="left", anchor="s")
@@ -63,7 +69,7 @@ size_button.pack(side="left", anchor="s")
 
 ## Image Brightness
 brightness_frame = tk.Frame(window)
-brightness_frame.grid(row=3, column=0,sticky="s", columnspan=3)
+brightness_frame.grid(row=3, column=0,sticky="s", columnspan=4)
 
 brightness_label = tk.Label(brightness_frame,text="Brightness:")
 brightness_label.pack(side="left", anchor="s", padx=4)
