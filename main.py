@@ -1,13 +1,39 @@
 import tkinter as tk
+from tkinter import messagebox
 import tkinter.filedialog
 
 def browse():                                                   # Function to replace the user filepath with a selected file
     filepath = tk.filedialog.askopenfilename()
     user_fp.delete(0, tk.END)
     user_fp.insert(0, filepath)
-    
+
+def print_metadata(bmp_bytes):
+    ## Metadata
+    meta_frame = tk.Frame(window, pady=30, padx=10)                 # Frame that holds all the labels for the metadata
+    meta_frame.grid(row=1,column=0,sticky="s",columnspan=4)
+
+    fsize = str(int.from_bytes(bmp_bytes[2:6],"little"))
+    img_w = str(int.from_bytes(bmp_bytes[18:22],"little"))
+    img_h = str(int.from_bytes(bmp_bytes[22:26],"little"))
+    img_bpp = str(int.from_bytes(bmp_bytes[28:30],"little"))
+
+    tk.Label(meta_frame, text="File Metadata", font=20).pack(side="top")
+    tk.Label(meta_frame, text=("File size: " + fsize + " bytes")).pack(side="top" )
+    tk.Label(meta_frame, text=("Image width: " + img_w) + " px").pack(side="top")
+    tk.Label(meta_frame, text=("Image height: " + img_h + " px")).pack(side="top")
+    tk.Label(meta_frame, text=("Bits per Pixel: " + img_bpp + " bits")).pack(side="top")
+
 def open_file():
-    print("Not yet implemented")
+    try:
+        f = open(str(user_fp.get()), mode="rb")
+    except:
+        messagebox.showerror(title="Could not open file",message="No file selected.")
+
+    bmp_bytes = f.read()
+    if(bmp_bytes[0:2] != b"BM"):                                    # Throw a warning if the file signature is not BM
+       messagebox.showerror(title="File format Warning",message="Please select a BMP file")
+    else:
+        print_metadata(bmp_bytes)
 
 def set_brightness():
     print("Not yet implemented, the slider value is: " + str(brightness_scale.get()))
@@ -18,7 +44,7 @@ def set_size():
 
 ## Initializing the Window
 window = tk.Tk()                                                # This initializes the window object
-window.geometry("720x512")                                      # sets the window resolution
+window.geometry("1320x720")                                      # sets the window resolution
 window.title("BMP File Decoder")                                # sets the title of the window
 
 
@@ -35,21 +61,6 @@ browse_button.grid(row=0,column=2, padx=5)
 open_button = tk.Button(window,width=5,text="open", command=open_file)
 open_button.grid(row=0,column=3, padx=5)
 
-
-## Metadata
-meta_frame = tk.Frame(window, pady=30, padx=10)                 # Frame that holds all the labels for the metadata
-meta_frame.grid(row=1,column=0,sticky="s",columnspan=4)
-
-fsize = "dummy"                                                 # These 4 variables hold the parsed metadata
-img_w = "dummy"
-img_h = "dummy"
-img_bpp = "dummy"
-
-meta_label = tk.Label(meta_frame, text="File Metadata", font=20).pack(side="top")
-meta_fsize = tk.Label(meta_frame, text=("File size: " + fsize)).pack(side="top", anchor="e")
-meta_width = tk.Label(meta_frame, text=("Image width: " + img_w)).pack(side="top", anchor="e")
-meta_height = tk.Label(meta_frame, text=("Image height: " + img_h)).pack(side="top", anchor="e")
-meta_bpp = tk.Label(meta_frame, text=("Bits per Pixel: " + img_bpp)).pack(side="top", anchor="e")
 
 
 ## Image Scale
