@@ -2,7 +2,11 @@ import tkinter as tk
 from tkinter import messagebox
 import tkinter.filedialog
 import numpy as np
-from PIL import image
+from PIL import Image
+from PIL import ImageTk
+
+global np_pixel_data
+np_pixel_data = None
 
 def browse():                                                   # Function to replace the user filepath with a selected file
     filepath = tk.filedialog.askopenfilename()
@@ -21,10 +25,12 @@ def open_file():
     else:
         ## Metadata
         meta_frame = tk.Frame(window, pady=30, padx=10)         # Frame that holds all the labels for the metadata
-        meta_frame.grid(row=1,column=0,sticky="s",columnspan=4)
+        meta_frame.grid(row=1,column=0,sticky="n",columnspan=4)
 
         fsize = int.from_bytes(bmp_bytes[2:6],"little")
+        global img_w
         img_w = int.from_bytes(bmp_bytes[18:22],"little")
+        global img_h
         img_h = int.from_bytes(bmp_bytes[22:26],"little")
         img_bpp = int.from_bytes(bmp_bytes[28:30],"little")
 
@@ -43,8 +49,12 @@ def open_file():
         ## Pixel Data Parsing
         f.seek(pixel_data_offset)
 
-        row_size = ((img_bpp * img_w - 31) // 32) * 4
-        padding = max(0,row_size - ((img_bpp * img_w) // 8))
+        if(img_bpp == 8):
+            row_bytes = ((img_w + 3) // 4) * 4
+            padding = row_bytes - img_w
+        else:
+            row_size = ((img_bpp * img_w - 31) // 32) * 4
+            padding = max(0,row_size - ((img_bpp * img_w) // 8))
 
         pixel_data = []
         for i in range(img_h):
@@ -99,18 +109,88 @@ def open_file():
             f.read(padding)
             pixel_data.append(curr_row)
 
+        global np_pixel_data
+        np_pixel_data = np.array(pixel_data, dtype=np.uint8)
+        np_pixel_data = np_pixel_data[::-1, :, :]                     #BMP stores the pixels upside down, this flips them
+        draw_image(np_pixel_data)
+       
+       
+def draw_image(pixel_data):
+    parsed_image = ImageTk.PhotoImage(Image.fromarray(pixel_data))
+
+    image_label.config(image=parsed_image)
+    image_label.image = parsed_image
+ 
+        
         
 
-def set_brightness():
-    print("Not yet implemented, the slider value is: " + str(brightness_scale.get()))
+def set_brightness(pixel_data):
+    b_scale = brightness_scale.get()/100
+    pixel_data = (pixel_data * b_scale).astype(np.uint8)
+    return pixel_data 
 
-def set_size():
-    print("Not yet implemented, the slider value is: " + str(size_scale.get()))
+def set_size(pixel_data):
+    sz_scale = size_scale.get()/100
+    new_h = int(img_h * sz_scale)
+    new_w = int(img_w * sz_scale)
+    scaled_pixel_data = np.zeros((new_h, new_w, 3), dtype=np.uint8) 
+    for i in range(new_h):
+        for j in range(new_w):
+            scaled_i = int(i / sz_scale)
+            scaled_j = int(j / sz_scale)
+            scaled_pixel_data[i, j] = pixel_data[scaled_i, scaled_j]
 
+    pixel_data = scaled_pixel_data
+    return pixel_data
+
+R_on = 1 
+def toggle_R():
+    global R_on
+    if(R_on):
+        R_on = 0
+    else:
+        R_on = 1
+    
+    modify_image()
+
+G_on = 1 
+def toggle_G():
+    global G_on
+    if(G_on):
+        G_on = 0
+    else:
+        G_on = 1
+    
+    modify_image()
+
+
+
+B_on = 1 
+def toggle_B():
+    global B_on
+    if(B_on):
+        B_on = 0
+    else:
+        B_on = 1
+
+    modify_image()
+
+def modify_image():
+    modified_image= np_pixel_data.copy()
+    modified_image = set_brightness(modified_image)
+    modified_image = set_size(modified_image)
+    if not R_on:
+        modified_image[:, :, 0] = 0        
+    if not G_on:
+        modified_image[:, :, 1] = 0
+    if not B_on:
+        modified_image[:, :, 2] = 0
+    
+    draw_image(modified_image)
 
 ## Initializing the Window
 window = tk.Tk()                                                # This initializes the window object
-window.geometry("720x512")                                      # sets the window resolution
+window.geometry("1200x720")                                      # sets the window resolution
 window.title("BMP File Decoder")                                # sets the title of the window
 
 
@@ -127,7 +207,9 @@ browse_button.grid(row=0,column=2, padx=5)
 open_button = tk.Button(window,width=5,text="open", command=open_file)
 open_button.grid(row=0,column=3, padx=5)
 
-
+## Parsed Image
+image_label = tk.Label(window, padx = 50, pady  = 50)
+image_label.grid(row = 1, column = 5, rowspan=3)
 
 ## Image Scale
 size_frame = tk.Frame(window)
@@ -140,7 +222,7 @@ size_scale = tk.Scale(size_frame, from_=0, to=100, orient="horizontal")
 size_scale.pack(side="left")
 size_scale.set(100)
 
-size_button = tk.Button(size_frame,text="set",command=set_size)
+size_button = tk.Button(size_frame,text="set",command=modify_image)
 size_button.pack(side="left", anchor="s")
 
 
@@ -155,17 +237,17 @@ brightness_scale = tk.Scale(brightness_frame, from_=0, to=100, orient="horizonta
 brightness_scale.pack(side="left")
 brightness_scale.set(100)
 
-size_button = tk.Button(brightness_frame,text="set",command=set_brightness)
+size_button = tk.Button(brightness_frame,text="set",command=modify_image)
 size_button.pack(side="left", anchor="s")
 
 
 ## RGB Buttons
-RGB_frame = tk.Frame(window, pady=50)                                    # Groups the buttons together
+RGB_frame = tk.Frame(window, pady=150)                                    # Groups the buttons together
 RGB_frame.grid(row=4,column=0,sticky="s",columnspan=3)
 
 toggle_label= tk.Label(RGB_frame, text="RGB Toggle:",padx=5, pady=5).pack(side="left")
-red_toggle = tk.Button(RGB_frame, text="R", fg="red").pack(side="left")
-red_toggle = tk.Button(RGB_frame, text="G", fg="green").pack(side="left")
-red_toggle = tk.Button(RGB_frame, text="B", fg="blue").pack(side="left")
+red_toggle = tk.Button(RGB_frame, text="R", fg="red",command=toggle_R).pack(side="left")
+green_toggle = tk.Button(RGB_frame, text="G", fg="green", command=toggle_G).pack(side="left")
+blue_toggle = tk.Button(RGB_frame, text="B", fg="blue",command=toggle_B).pack(side="left")
 
 window.mainloop()                                               # This actually starts the GUI
